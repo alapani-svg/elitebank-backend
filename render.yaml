@@ -1,4 +1,5 @@
-# Render Blueprint — auto-provisions a Postgres database + a Django web service.
+# Render Blueprint (must live at repo root for Render to discover it).
+# Auto-provisions a Postgres database + a Django web service from /backend.
 # Connect this repo on render.com → New + → Blueprint → select repo.
 # Reference: https://render.com/docs/blueprint-spec
 
@@ -15,7 +16,7 @@ services:
     runtime: python
     plan: free
     region: oregon
-    rootDir: backend
+    rootDir: backend          # Django project lives in /backend
     branch: main
     buildCommand: |
       pip install --upgrade pip
@@ -39,7 +40,7 @@ services:
           name: elite-bank-db
           property: connectionString
       - key: FRONTEND_URL
-        sync: false                # set manually after first Vercel deploy
+        sync: false                # set manually in dashboard after first Vercel deploy
       - key: NOTCHPAY_PUBLIC_KEY
         sync: false                # leave empty for demo mode, or set sandbox key
       - key: SECURE_SSL_REDIRECT
