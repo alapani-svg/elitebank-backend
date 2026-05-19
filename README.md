@@ -1,9 +1,9 @@
-# Elite Bank — Fullstack Digital Banking App
+# Elite Bank  Fullstack Digital Banking App
 
-**Institut Universitaire Saint Jean — Saint Jean Ingénieur**
+Institut Universitaire Saint Jean  Saint Jean Ingénieur
 End-of-Semester Project · Fullstack Web Development (Django REST + Angular)
-**Student:** AGOUFACK ALAPANI CORANTIN JUNIOR · Year 2 · 2025–2026
-**Supervisor:** Mr. KINKEU FRANCK DANIEL
+Student:AGOUFACK ALAPANI CORANTIN JUNIOR · Year 2 · 2025–2026
+Supervisor: Mr. KINKEU FRANCK DANIEL
 
 A premium digital-banking platform for Cameroon featuring peer-to-peer transfers,
 mobile-money deposit/withdrawal (Orange · MTN), utility-bill payments (ENEO, CAMWATER,
@@ -343,5 +343,5 @@ The `{{ 'key.path' | t }}` pipe is impure → re-renders the entire UI when the 
 
 ## 🙏 Credits
 
-Built by **CORANTIN** — Yaoundé, Cameroon · © 2026
-Contact: **promptforge237@gmail.com**
+Built by CORANTIN Yaoundé, Cameroon · © 2026
+Contact: promptforge237@gmail.com
