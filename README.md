@@ -334,7 +334,7 @@ The `{{ 'key.path' | t }}` pipe is impure → re-renders the entire UI when the 
 
 ## 📌 Live URLs
 
-- **Source code:** <https://github.com/alapani-svg/EliteBank-cm>
+- **Source code:** <https://github.com/corantinagoufack-max/EliteBank-cm>
 - **Backend (Render):** `https://_____.onrender.com` _(fill in after first deploy)_
 - **Frontend (Vercel):** `https://_____.vercel.app` _(fill in after first deploy)_
 - **Swagger docs:** `https://_____.onrender.com/api/docs/`
