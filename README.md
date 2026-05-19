@@ -8,7 +8,7 @@ Supervisor: Mr. KINKEU FRANCK DANIEL
 A premium digital-banking platform for Cameroon featuring peer-to-peer transfers,
 mobile-money deposit/withdrawal (Orange · MTN), utility-bill payments (ENEO, CAMWATER,
 CANAL+, CAMTEL), airtime purchases, saved beneficiaries, an in-app notification feed,
-and PDF / CSV account statements — all behind JWT authentication, with full English ↔
+and PDF / CSV account statements  all behind JWT authentication, with full English ↔
 French i18n.
 
 ---
