@@ -2,7 +2,7 @@ from pathlib import Path
 from datetime import timedelta
 import os
 
-# ── .env loader ───────────────────────────────────────────────────────────────
+#  .env loader 
 try:
     from decouple import config as _cfg
 except ImportError:
@@ -29,13 +29,13 @@ except ImportError:
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# ── Security ──────────────────────────────────────────────────────────────────
+#  Security 
 SECRET_KEY = _cfg('SECRET_KEY', default='django-insecure-change-me-in-production-use-env-var')
 DEBUG      = _cfg('DEBUG', default='True', cast=bool)
 
 ALLOWED_HOSTS = [h.strip() for h in _cfg('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')]
 
-# ── Apps ──────────────────────────────────────────────────────────────────────
+#  Apps 
 INSTALLED_APPS = [
     # Jazzmin must come BEFORE django.contrib.admin
     'jazzmin',
@@ -59,7 +59,7 @@ INSTALLED_APPS = [
     'transactions',
 ]
 
-# ── Middleware ────────────────────────────────────────────────────────────────
+#  Middleware 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',          # must be first
     'django.middleware.security.SecurityMiddleware',
@@ -72,10 +72,9 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# ── CORS ──────────────────────────────────────────────────────────────────────
+#  CORS 
 # Always allow localhost for dev. In production add the deployed frontend URL
 # via FRONTEND_URL (e.g. https://elite-bank.vercel.app). Multiple URLs may be
-# comma-separated.
 _frontend_urls = [u.strip() for u in _cfg(
     'FRONTEND_URL', default='http://localhost:4200'
 ).split(',') if u.strip()]
@@ -83,12 +82,12 @@ CORS_ALLOWED_ORIGINS = list({
     'http://localhost:4200',
     *_frontend_urls,
 })
-# Vercel previews use unpredictable subdomains — allow the whole vercel.app
-# (only in DEBUG=False) via regex so the demo URL works even if it rotates.
+
+
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https://.*\.vercel\.app$",
 ]
-CSRF_TRUSTED_ORIGINS = [*_frontend_urls, 'https://*.vercel.app', 'https://*.onrender.com']
+CSRF_TRUSTED_ORIGINS = [*_frontend_urls, 'https://elite-bank-cm.vercel.app', 'https://elite-bank-api.onrender.com']
 
 ROOT_URLCONF = 'core.urls'
 
@@ -107,7 +106,7 @@ TEMPLATES = [{
 
 WSGI_APPLICATION = 'core.wsgi.application'
 
-# ── Database ──────────────────────────────────────────────────────────────────
+#  Database 
 # Locally: SQLite. On Render: read DATABASE_URL (auto-injected for the linked
 # Postgres instance) via dj-database-url.
 _database_url = _cfg('DATABASE_URL', default='')
@@ -133,7 +132,7 @@ else:
         }
     }
 
-# ── Auth ──────────────────────────────────────────────────────────────────────
+#  Auth 
 AUTH_USER_MODEL = 'accounts.User'
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -143,7 +142,7 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-# ── DRF ───────────────────────────────────────────────────────────────────────
+# ─ DRF 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -154,7 +153,7 @@ REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
-# ── OpenAPI / Swagger ─────────────────────────────────────────────────────────
+#  OpenAPI / Swagger 
 SPECTACULAR_SETTINGS = {
     'TITLE':       'Elite Bank API',
     'DESCRIPTION': (
@@ -181,7 +180,7 @@ SPECTACULAR_SETTINGS = {
     'SCHEMA_PATH_PREFIX': '/api/',
 }
 
-# ── Simple JWT ────────────────────────────────────────────────────────────────
+# ─ Simple JWT 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME':       timedelta(hours=1),
     'REFRESH_TOKEN_LIFETIME':      timedelta(days=7),
@@ -192,7 +191,7 @@ SIMPLE_JWT = {
     'USER_ID_CLAIM':               'user_id',
 }
 
-# ── Internationalisation ─────────────────────────────────────────────────────
+#  Internationalisation 
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE     = 'Africa/Douala'
 USE_I18N      = True
@@ -203,7 +202,7 @@ STATIC_ROOT     = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# ── Production security defaults ──────────────────────────────────────────────
+#  Production security defaults 
 # Only enabled when DEBUG=False so dev stays HTTP-friendly.
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER  = ('HTTP_X_FORWARDED_PROTO', 'https')
@@ -216,7 +215,7 @@ if not DEBUG:
     SECURE_REFERRER_POLICY         = 'same-origin'
     X_FRAME_OPTIONS                = 'DENY'
 
-# ── Third-party services ─────────────────────────────────────────────────────
+#  Third-party services 
 NOTCHPAY_PUBLIC_KEY   = _cfg("NOTCHPAY_PUBLIC_KEY",   default="")
 NOTCHPAY_CALLBACK_URL = _cfg("NOTCHPAY_CALLBACK_URL", default="http://localhost:8000/api/payments/callback/")
 
@@ -229,7 +228,7 @@ CLOUDINARY_API_SECRET = _cfg("CLOUDINARY_API_SECRET", default="")
 
 EXCHANGE_API_KEY = _cfg("EXCHANGE_API_KEY", default="")
 
-# ── Email ─────────────────────────────────────────────────────────────────────
+# ── Email 
 _email_user = _cfg("EMAIL_HOST_USER", default="")
 EMAIL_BACKEND     = (
     "django.core.mail.backends.smtp.EmailBackend"
@@ -245,7 +244,7 @@ DEFAULT_FROM_EMAIL  = _cfg("DEFAULT_FROM_EMAIL",  default="Elite Bank <noreply@e
 SERVER_EMAIL        = DEFAULT_FROM_EMAIL
 ADMINS              = [("Elite Bank Admin", _email_user)] if _email_user else []
 
-# ── Logging ───────────────────────────────────────────────────────────────────
+# ── Logging 
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -289,7 +288,7 @@ LOGGING = {
     },
 }
 
-# ── Jazzmin admin theme ───────────────────────────────────────────────────────
+#  Jazzmin admin theme 
 JAZZMIN_SETTINGS = {
     # Browser tab / admin index
     "site_title":   "Elite Bank Admin",

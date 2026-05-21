@@ -42,11 +42,12 @@ export interface AuthResponse {
 }
 
 /** Server response when a 2FA-enabled user logs in. The frontend then has to
- *  POST `{ challenge_id, code }` to `/api/auth/2fa/verify/` to get tokens. */
+ *  POST `{ challenge_id, code }` to `/api/auth/2fa/verify/` to get tokens.
+ *  Delivery channel is EMAIL — `masked_email` is e.g. `co***05@gmail.com`. */
 export interface OtpChallengeResponse {
   requires_otp: true;
   challenge_id: string;
-  masked_phone: string;
+  masked_email: string;
   email: string;
   message: string;
 }
@@ -99,8 +100,8 @@ export class AuthService {
   }
 
   // Re-send a fresh OTP — POST /api/auth/2fa/resend/
-  resendOtp(challenge_id: string): Observable<{ challenge_id: string; masked_phone: string; message: string }> {
-    return this.http.post<{ challenge_id: string; masked_phone: string; message: string }>(
+  resendOtp(challenge_id: string): Observable<{ challenge_id: string; masked_email: string; message: string }> {
+    return this.http.post<{ challenge_id: string; masked_email: string; message: string }>(
       `${this.api}/api/auth/2fa/resend/`, { challenge_id });
   }
 

@@ -1,12 +1,14 @@
 """
 One-time-password helpers for 2FA login.
 
-Demo mode: when `AT_API_KEY` is empty, the OTP is logged to the Django
-console instead of being SMS-sent. This lets the project be graded without
-any SMS budget.
+Delivery channel: EMAIL — the OTP is sent to the user's registered email
+address (no phone-number reliance, since phone formatting is fragile). If the
+email backend is configured (EMAIL_HOST_USER set), the user gets a real
+message; otherwise Django's console backend logs the code to the server
+logs, which is fine for development & demo.
 
 OTP characteristics:
-- 6-digit numeric code (no leading zero ambiguity — formatted with leading zeros)
+- 6-digit numeric code, zero-padded
 - SHA-256 hashed at rest (we never store the plain code in the DB)
 - 5-minute TTL
 - Max 5 verification attempts before the challenge is auto-consumed
@@ -19,6 +21,7 @@ import secrets
 from datetime import timedelta
 
 from django.conf import settings
+from django.core.mail import send_mail
 from django.utils import timezone
 
 from accounts.models import OTPChallenge, User
@@ -42,8 +45,8 @@ def _generate_code() -> str:
 def issue_challenge(user: User) -> tuple[OTPChallenge, str]:
     """Mint a new OTP challenge for the user. Returns (challenge, plain_code).
 
-    Caller is responsible for actually delivering `plain_code` to the user
-    (SMS / email / console). The plain code is NEVER persisted.
+    The caller is responsible for delivering `plain_code` to the user.
+    The plain code is NEVER persisted — only its SHA-256 hash.
     """
     code = _generate_code()
     expires_at = timezone.now() + timedelta(minutes=OTP_TTL_MINUTES)
@@ -56,20 +59,38 @@ def issue_challenge(user: User) -> tuple[OTPChallenge, str]:
 
 
 def send_otp(user: User, code: str) -> None:
-    """Deliver the OTP to the user. Falls back to console-logging in demo mode."""
-    at_key = getattr(settings, 'AT_API_KEY', '') or ''
-    if at_key and user.phone_number:
-        try:
-            from .sms import send_otp as sms_send_otp
-            sms_send_otp(user.phone_number, code)
-            logger.info('OTP sent via SMS to %s (****%s)',
-                        user.email, user.phone_number[-3:])
-            return
-        except Exception as exc:
-            logger.warning('SMS gateway failed (%s) — falling back to console', exc)
+    """Email the OTP to the user's registered address.
 
-    # DEMO MODE — never log the code to a real production log, but for a
-    # student project this is the cheapest way to demo the feature.
+    Falls back to console-logging the code if the email backend rejects the
+    message (no SMTP creds, network issue, etc.) — useful for demo / grading.
+    """
+    subject = "Your Elite Bank verification code"
+    body = (
+        f"Hi {user.full_name.split(' ')[0] if user.full_name else 'there'},\n\n"
+        f"Your Elite Bank verification code is:\n\n"
+        f"    {code}\n\n"
+        f"This code expires in {OTP_TTL_MINUTES} minutes.\n"
+        f"If you didn't request this code, please ignore this email and\n"
+        f"consider changing your password.\n\n"
+        f"— The Elite Bank team\n"
+        f"Built by CORANTIN · promptforge237@gmail.com"
+    )
+
+    try:
+        send_mail(
+            subject,
+            body,
+            getattr(settings, 'DEFAULT_FROM_EMAIL', None),
+            [user.email],
+            fail_silently=False,
+        )
+        logger.info('OTP emailed to %s', user.email)
+        return
+    except Exception as exc:
+        logger.warning('Email gateway failed (%s) — falling back to console', exc)
+
+    # DEMO MODE — log the code so the developer / grader can read it from
+    # the server logs without needing a working SMTP connection.
     logger.warning('═══════════ OTP DEMO MODE ═══════════')
     logger.warning('User : %s', user.email)
     logger.warning('Code : %s', code)
@@ -98,7 +119,6 @@ def verify_challenge(challenge_id: str, code: str) -> tuple[OTPChallenge | None,
 
     if challenge.code_hash != _hash_code(code.strip()):
         challenge.attempts += 1
-        # Auto-consume on final wrong attempt so it can't be brute-forced further.
         update_fields = ['attempts']
         if challenge.attempts >= MAX_ATTEMPTS:
             challenge.consumed_at = timezone.now()
@@ -115,8 +135,23 @@ def verify_challenge(challenge_id: str, code: str) -> tuple[OTPChallenge | None,
     return challenge, ''
 
 
-def mask_phone(phone: str) -> str:
-    """Return e.g. '+237 6** *** *01' for display in the OTP page."""
+def mask_email(email: str) -> str:
+    """Return e.g. `co**********05@gmail.com` for display in the OTP page.
+
+    Hides the middle of the local-part while keeping the first 2 and last 2
+    characters visible plus the full domain (so the user can confirm they
+    recognise their own account).
+    """
+    if not email or '@' not in email:
+        return '***'
+    local, _, domain = email.partition('@')
+    if len(local) <= 4:
+        return f"{local[:1]}***@{domain}"
+    return f"{local[:2]}{'*' * max(3, len(local) - 4)}{local[-2:]}@{domain}"
+
+
+# Kept for backwards-compat with old callers that may still import this.
+def mask_phone(phone: str) -> str:  # pragma: no cover
     if not phone or len(phone) < 4:
         return '****'
     return f"{phone[:4]} *** *** *{phone[-2:]}"

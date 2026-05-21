@@ -24,7 +24,7 @@ export class Login implements OnInit {
   // ── Step 2: OTP (only shown for 2FA-enabled users) ────────────────────────
   /** When non-empty, the OTP panel is shown instead of the credentials panel. */
   otpChallengeId = '';
-  otpMaskedPhone = '';
+  otpMaskedEmail = '';
   otpEmail       = '';
   otpForm!:    FormGroup;
   otpLoading   = false;
@@ -71,7 +71,7 @@ export class Login implements OnInit {
         if (isOtpChallenge(res)) {
           // 2FA required — flip to the OTP panel.
           this.otpChallengeId = res.challenge_id;
-          this.otpMaskedPhone = res.masked_phone;
+          this.otpMaskedEmail = res.masked_email;
           this.otpEmail       = res.email;
           this.startResendCooldown(30);
         } else {
@@ -112,7 +112,7 @@ export class Login implements OnInit {
     this.auth.resendOtp(this.otpChallengeId).subscribe({
       next: (res) => {
         this.otpChallengeId = res.challenge_id;
-        this.otpMaskedPhone = res.masked_phone;
+        this.otpMaskedEmail = res.masked_email;
         this.startResendCooldown(30);
       },
       error: (err: HttpErrorResponse) => {
@@ -123,7 +123,7 @@ export class Login implements OnInit {
 
   cancelOtp(): void {
     this.otpChallengeId = '';
-    this.otpMaskedPhone = '';
+    this.otpMaskedEmail = '';
     this.otpEmail       = '';
     this.otpForm.reset();
     this.stopResendCooldown();

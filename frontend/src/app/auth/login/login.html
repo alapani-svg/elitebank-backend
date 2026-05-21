@@ -110,13 +110,13 @@
     <div *ngIf="otpChallengeId" class="otp-panel">
       <div class="otp-head">
         <div class="otp-shield">
-          <span class="material-symbols-outlined">phonelink_lock</span>
+          <span class="material-symbols-outlined">mark_email_read</span>
         </div>
         <h2>Two-Factor Verification</h2>
         <p>
-          We sent a 6-digit code to
-          <strong>{{ otpMaskedPhone || otpEmail }}</strong>.
-          Enter it below to finish signing in.
+          We emailed a 6-digit code to
+          <strong>{{ otpMaskedEmail || otpEmail }}</strong>.
+          Check your inbox and enter the code below to finish signing in.
         </p>
       </div>
 

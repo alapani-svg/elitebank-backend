@@ -45,7 +45,7 @@ class LoginView(APIView):
 
     If the user has `two_factor_enabled=False` → returns JWT tokens immediately.
     If the user has `two_factor_enabled=True`  → issues an OTP challenge and
-    returns `{ requires_otp: true, challenge_id, masked_phone }`. The frontend
+    returns `{ requires_otp: true, challenge_id, masked_email }`. The frontend
     must then POST to `/api/auth/2fa/verify/` to exchange the OTP for tokens.
     """
     permission_classes = [permissions.AllowAny]
@@ -59,17 +59,17 @@ class LoginView(APIView):
 
         user = serializer.validated_data['user']
 
-        # ── 2FA branch ────────────────────────────────────────────────────────
+        # ── 2FA branch — emails the OTP to the user's registered address ──────
         if user.two_factor_enabled:
-            from .services.otp import issue_challenge, send_otp, mask_phone
+            from .services.otp import issue_challenge, send_otp, mask_email
             challenge, code = issue_challenge(user)
             send_otp(user, code)
             return Response({
                 'requires_otp': True,
                 'challenge_id': str(challenge.id),
-                'masked_phone': mask_phone(user.phone_number or ''),
+                'masked_email': mask_email(user.email),
                 'email':        user.email,
-                'message':      'Verification code sent. Please enter it to complete sign-in.',
+                'message':      'Verification code sent to your email. Please enter it to complete sign-in.',
             }, status=status.HTTP_200_OK)
 
         # ── No 2FA — issue tokens straight away ───────────────────────────────
@@ -156,14 +156,14 @@ class OTPResendView(APIView):
             old.consumed_at = timezone.now()
             old.save(update_fields=['consumed_at'])
 
-        from .services.otp import issue_challenge, send_otp, mask_phone
+        from .services.otp import issue_challenge, send_otp, mask_email
         new, code = issue_challenge(old.user)
         send_otp(old.user, code)
 
         return Response({
             'challenge_id': str(new.id),
-            'masked_phone': mask_phone(old.user.phone_number or ''),
-            'message':      'A new verification code has been sent.',
+            'masked_email': mask_email(old.user.email),
+            'message':      'A new verification code has been sent to your email.',
         }, status=status.HTTP_200_OK)
 
 
