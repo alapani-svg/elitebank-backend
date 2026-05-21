@@ -109,7 +109,7 @@ WSGI_APPLICATION = 'core.wsgi.application'
 #  Database 
 # Locally: SQLite. On Render: read DATABASE_URL (auto-injected for the linked
 # Postgres instance) via dj-database-url.
-_database_url = _cfg('DATABASE_URL', default='')
+_database_url = _cfg('DATABASE_URL', default='render psql dpg-d85uvtv7f7vs73csbvd0-a.render.com')
 if _database_url:
     try:
         import dj_database_url
