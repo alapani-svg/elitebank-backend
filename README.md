@@ -1,4 +1,4 @@
-# Elite Bank — Backend (Django REST API)
+# Elite Bank  Backend (Django REST API)
 
 Institut Universitaire Saint Jean Saint Jean Ingénieur
 End-of-Semester Project · Fullstack Web Development (Django REST + Angular)
