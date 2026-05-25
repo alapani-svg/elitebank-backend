@@ -1,15 +1,17 @@
-# Elite Bank  Fullstack Digital Banking App
+# Elite Bank — Backend (Django REST API)
 
-Institut Universitaire Saint Jean  Saint Jean Ingénieur
+Institut Universitaire Saint Jean — Saint Jean Ingénieur
 End-of-Semester Project · Fullstack Web Development (Django REST + Angular)
-Student:AGOUFACK ALAPANI CORANTIN JUNIOR · Year 2 · 2025–2026
+Student: AGOUFACK ALAPANI CORANTIN JUNIOR · Year 2 · 2025–2026
 Supervisor: Mr. KINKEU FRANCK DANIEL
 
-A premium digital-banking platform for Cameroon featuring peer-to-peer transfers,
-mobile-money deposit/withdrawal (Orange · MTN), utility-bill payments (ENEO, CAMWATER,
-CANAL+, CAMTEL), airtime purchases, saved beneficiaries, an in-app notification feed,
-and PDF / CSV account statements  all behind JWT authentication, with full English ↔
-French i18n.
+The Django REST API powering Elite Bank — a digital-banking platform for Cameroon
+featuring peer-to-peer transfers, mobile-money deposit/withdrawal (Orange · MTN),
+utility-bill payments, airtime purchases, beneficiaries, notifications, and PDF/CSV
+statements — all behind JWT authentication.
+
+> **Frontend (Angular 21 SPA) lives in a separate repo:**
+> https://github.com/alapani-svg/elitebank-frontend
 
 ---
 
@@ -18,15 +20,13 @@ French i18n.
 | Layer    | Technology                                                                |
 |----------|---------------------------------------------------------------------------|
 | Backend  | Django 4.2 · Django REST Framework · `djangorestframework-simplejwt`      |
-| Auth     | JWT with refresh-token blacklisting on logout                             |
+| Auth     | JWT with refresh-token blacklisting on logout · email-OTP 2FA             |
 | Admin    | Jazzmin (custom theme + icons + ordering)                                 |
 | Docs     | drf-spectacular (Swagger UI + ReDoc)                                      |
 | PDF      | ReportLab                                                                 |
-| Frontend | Angular 21 (standalone components, signals-friendly)                      |
-| Forms    | Reactive Forms with client-side validators                                |
-| Styling  | SCSS + Material Symbols Outlined (offline) + Manrope                      |
-| i18n     | Custom lightweight pipe-based service (en + fr) synced with user profile  |
-| Deploy   | Backend → Render · Frontend → Vercel                                      |
+| Database | PostgreSQL (Render) · SQLite (local dev)                                  |
+| Static   | WhiteNoise (gzip + brotli)                                                |
+| Deploy   | Render (Blueprint via `render.yaml`)                                       |
 
 ---
 
@@ -81,56 +81,30 @@ References follow `ELITE-{TXN|DEP|WTH|PAY|AIR}-XXXXXXXX`. Failed transfers persi
 ## 📁 Repository Layout
 
 ```
-elite-bank-final/
-├── backend/                         Django REST API
-│   ├── accounts/                    Custom User + Beneficiary + Notification models
-│   │   ├── models.py
-│   │   ├── serializers.py
-│   │   ├── views.py
-│   │   ├── urls.py
-│   │   ├── admin.py                 Jazzmin-flavoured ModelAdmin
-│   │   ├── services/                sms / storage / notifications helpers
-│   │   └── management/commands/
-│   │       └── seed_demo.py         Populate realistic demo data
-│   ├── transactions/                Transaction model, transfer/deposit/etc.
-│   │   ├── models.py                Transaction with typed ELITE- references
-│   │   ├── serializers.py           Business-rule validation
-│   │   ├── views.py                 TransferView, DepositInitiateView, WithdrawalView…
-│   │   └── services/                notchpay / email / statement
-│   ├── core/
-│   │   ├── settings.py              Reads .env via decouple
-│   │   ├── urls.py                  + health + Swagger
-│   │   └── health.py
-│   ├── smoke_test.py                40+ endpoint end-to-end smoke test
-│   ├── requirements.txt
-│   ├── render.yaml                  ← Render Blueprint
-│   ├── Procfile                     ← Render fallback
-│   └── manage.py
-└── frontend/                        Angular 21 SPA
-    └── src/app/
-        ├── auth/                    login + register (Reactive forms)
-        ├── pages/
-        │   ├── home/                Landing
-        │   ├── dashboard/           Balance card + recent transactions
-        │   ├── profile/             Settings + Help modal
-        │   ├── transactions/        List + Statement modal
-        │   │   ├── transfer/
-        │   │   ├── deposit/
-        │   │   └── withdrawal/
-        │   ├── payments/            Bills + Airtime
-        │   └── notifications/
-        ├── components/
-        │   ├── navbar/              Landing navbar
-        │   ├── hero/  features/  cta/  footer/
-        │   ├── notif-bell/          Shared notification dropdown
-        │   └── user-avatar/         Avatar with initials fallback
-        ├── services/                auth, user, transaction, beneficiary,
-        │                            notification, language
-        ├── interceptors/            auth.interceptor + http-timeout.interceptor
-        ├── guards/                  authGuard
-        ├── pipes/                   t.pipe (i18n)
-        ├── i18n/                    translations.ts (en + fr dictionary)
-        └── environments/            environment.ts + environment.prod.ts
+elitebank-backend/                   Django REST API
+├── accounts/                        Custom User + Beneficiary + Notification + OTPChallenge models
+│   ├── models.py
+│   ├── serializers.py
+│   ├── views.py
+│   ├── urls.py
+│   ├── admin.py                     Jazzmin-flavoured ModelAdmin
+│   ├── services/                    otp / storage / notifications helpers
+│   └── management/commands/
+│       └── seed_demo.py             Populate realistic demo data
+├── transactions/                    Transaction model + transfer/deposit/withdrawal/bill/airtime
+│   ├── models.py                    Transaction with typed ELITE- references
+│   ├── serializers.py               Business-rule validation
+│   ├── views.py                     TransferView, DepositInitiateView, WithdrawalView…
+│   └── services/                    notchpay / email / statement
+├── core/
+│   ├── settings.py                  Reads .env via decouple
+│   ├── urls.py                      + health + Swagger
+│   └── health.py
+├── smoke_test.py                    40+ endpoint end-to-end smoke test
+├── requirements.txt
+├── render.yaml                      ← Render Blueprint
+├── Procfile                         ← Render fallback
+└── manage.py
 ```
 
 ---
@@ -142,9 +116,7 @@ elite-bank-final/
 - Node 20+
 - npm 10+
 
-### 1. Backend
 ```bash
-cd backend
 python -m venv venv
 # Windows
 venv\Scripts\activate
@@ -153,25 +125,19 @@ source venv/bin/activate
 
 pip install -r requirements.txt
 python manage.py migrate
-python manage.py createsuperuser           # for /admin/
-python manage.py seed_demo --wipe --users 3  # optional demo data
+python manage.py createsuperuser              # for /admin/
+python manage.py seed_demo --wipe --users 3   # optional demo data
 python manage.py runserver
 ```
 Backend live at <http://127.0.0.1:8000/>.
 
-### 2. Frontend (separate terminal)
+### Verify everything works (optional but recommended)
 ```bash
-cd frontend
-npm install
-npm start    # ng serve, http://localhost:4200/
-```
-
-### 3. Verify everything works (optional but recommended)
-```bash
-cd backend
 python manage.py shell -c "exec(open('smoke_test.py', encoding='utf-8').read())"
 ```
 Expected: **40+ PASS, 0 FAIL** — hits every public endpoint end-to-end.
+
+The Angular frontend runs separately — see https://github.com/alapani-svg/elitebank-frontend
 
 ---
 
@@ -212,21 +178,8 @@ Your API will live at `https://<service>.onrender.com/` with docs at `/api/docs/
 
 ### Frontend → Vercel
 
-1. Edit [`frontend/src/environments/environment.prod.ts`](frontend/src/environments/environment.prod.ts):
-   ```ts
-   export const environment = {
-     production: true,
-     apiUrl: 'https://<your-service>.onrender.com'
-   };
-   ```
-2. On **vercel.com** → **Add New** → **Project** → import the repo.
-3. **Root Directory**: `frontend`
-4. **Build Command**: `npm run build`
-5. **Output Directory**: `dist/frontend/browser`
-6. The bundled [`frontend/vercel.json`](frontend/vercel.json) handles SPA route rewrites
-   (every path → `index.html`).
-
-Your app will live at `https://<your-project>.vercel.app/`.
+The Angular SPA is deployed separately from its own repo. See
+https://github.com/alapani-svg/elitebank-frontend for the deployment instructions.
 
 ---
 
@@ -248,26 +201,12 @@ Logout:  blacklists refresh token server-side, clears local storage,
 
 ---
 
-## 🌍 Languages
-
-Switching the profile language dropdown:
-
-1. Calls `LanguageService.use('fr')` → flips UI immediately (optimistic).
-2. PATCHes `/api/auth/me/` with the new language.
-3. On next login, `UserService` reads `user.language` and replays it.
-
-Translation keys live in [`src/app/i18n/translations.ts`](frontend/src/app/i18n/translations.ts).
-The `{{ 'key.path' | t }}` pipe is impure → re-renders the entire UI when the language flips.
-
----
-
 ## 🧪 Testing
 
-| Layer    | How                                                           |
-|----------|---------------------------------------------------------------|
-| Backend  | `python manage.py shell -c "exec(open('smoke_test.py')...)"` |
-| Backend  | `python manage.py check`                                       |
-| Frontend | `npx ng build --configuration development`                    |
+| How                                                                 |
+|---------------------------------------------------------------------|
+| `python manage.py shell -c "exec(open('smoke_test.py')...)"`        |
+| `python manage.py check`                                            |
 
 ---
 
@@ -339,7 +278,8 @@ The `{{ 'key.path' | t }}` pipe is impure → re-renders the entire UI when the 
 - **📘 Swagger docs:** <https://elite-bank-api.onrender.com/api/docs/>
 - **🛠 Admin:** <https://elite-bank-api.onrender.com/admin/>
 - **💚 Health check:** <https://elite-bank-api.onrender.com/healthz/>
-- **📂 Source code:** <https://github.com/corantinagoufack-max/EliteBank-cm>
+- **📂 Backend source:** <https://github.com/alapani-svg/elitebank-backend>
+- **📂 Frontend source:** <https://github.com/alapani-svg/elitebank-frontend>
 
 ---
 

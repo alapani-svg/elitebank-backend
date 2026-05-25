@@ -26,11 +26,6 @@ backend/media/
 backend/venv/
 backend/.venv/
 
-# Node / Angular
-node_modules/
-frontend/dist/
-frontend/.angular/
-
 # OS
 .DS_Store
 Thumbs.db

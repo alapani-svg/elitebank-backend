@@ -70,7 +70,7 @@ alice.save()
 # Authenticated client for Alice
 hdr = {'HTTP_AUTHORIZATION': f'Bearer {alice_token}'}
 
-# ── 2. Profile ───────────────────────────────────────────────────────────────
+#  2. Profile 
 print('\nPROFILE')
 r = c.get('/api/auth/me/', **hdr)
 check('GET /me/', r.status_code == 200 and r.json()['email'] == 'alice@smoketest.local',
@@ -119,7 +119,7 @@ check('filter beneficiaries by category', r.status_code == 200 and len(r.json())
 r = c.delete(f'/api/auth/beneficiaries/{bene_id}/', **hdr)
 check('delete beneficiary', r.status_code == 204)
 
-# ── 4. Transfers ─────────────────────────────────────────────────────────────
+#  4. Transfers 
 print('\nTRANSFERS')
 r = c.post('/api/transactions/transfer/', data=json.dumps({
     'recipient_identifier': 'bob@smoketest.local', 'amount': 5000, 'description': 'test transfer',
