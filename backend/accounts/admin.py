@@ -139,13 +139,15 @@ class UserAdmin(BaseUserAdmin):
     # ── Custom columns ────────────────────────────────────────────────────────
 
     def avatar_thumbnail(self, obj):
-        if obj.avatar_url:
+        avatar = getattr(obj, 'avatar_url', '') or ''
+        if avatar:
             return format_html(
                 '<img src="{}" width="32" height="32" '
                 'style="border-radius:50%;object-fit:cover;border:2px solid #D4AF37;" />',
-                obj.avatar_url,
+                avatar,
             )
-        initials = ''.join(w[0].upper() for w in obj.full_name.split()[:2]) or '?'
+        name = getattr(obj, 'full_name', '') or ''
+        initials = ''.join(w[0].upper() for w in name.split()[:2]) or '?'
         return format_html(
             '<div style="width:32px;height:32px;border-radius:50%;background:#D4AF37;'
             'color:#12110F;display:inline-flex;align-items:center;justify-content:center;'
@@ -155,23 +157,25 @@ class UserAdmin(BaseUserAdmin):
     avatar_thumbnail.short_description = ''
 
     def avatar_preview(self, obj):
-        if obj.avatar_url:
+        avatar = getattr(obj, 'avatar_url', '') or ''
+        if avatar:
             return format_html(
                 '<img src="{}" width="90" height="90" '
                 'style="border-radius:50%;object-fit:cover;border:3px solid #D4AF37;" />'
                 '<br/><small style="color:#999;word-break:break-all;">{}</small>',
-                obj.avatar_url, obj.avatar_url,
+                avatar, avatar,
             )
         return format_html('<span style="color:#999;">No avatar uploaded.</span>')
     avatar_preview.short_description = 'Current Avatar'
 
     def balance_formatted(self, obj):
-        if obj.balance_xaf > 0:
+        bal = obj.balance_xaf or 0
+        if bal > 0:
             return format_html(
-                '<strong style="color:#28a745;">XAF {:,.0f}</strong>', obj.balance_xaf
+                '<strong style="color:#28a745;">XAF {:,.0f}</strong>', bal
             )
         return format_html(
-            '<span style="color:#dc3545;">XAF {:,.0f}</span>', obj.balance_xaf
+            '<span style="color:#dc3545;">XAF {:,.0f}</span>', bal
         )
     balance_formatted.short_description = 'Balance (XAF)'
     balance_formatted.admin_order_field = 'balance_xaf'
