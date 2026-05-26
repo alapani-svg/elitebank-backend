@@ -1,5 +1,7 @@
 from django.contrib import admin
+from django.http import HttpResponseRedirect
 from django.urls import path, include
+from django.views.decorators.cache import never_cache
 
 from drf_spectacular.views import (
     SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView,
@@ -7,10 +9,19 @@ from drf_spectacular.views import (
 
 from .health import health, readiness
 
+
+@never_cache
+def root_to_admin(_request):
+    return HttpResponseRedirect('/admin/login/')
+
+
 urlpatterns = [
-    # Django admin mounted at the root, so https://elite-bank-api.onrender.com/
-    # serves the admin login directly (no redirect, no /admin/ prefix).
-    path('', admin.site.urls),
+    # Root → admin login. The admin stays at /admin/ to avoid the URL
+    # resolver swallowing /api/* and /healthz/ paths (which happened when
+    # admin was mounted at the empty prefix).
+    path('', root_to_admin, name='root'),
+
+    path('admin/', admin.site.urls),
 
     # Health probes
     path('healthz/',  health,    name='health'),
