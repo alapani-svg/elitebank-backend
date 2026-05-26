@@ -27,9 +27,9 @@ class RegisterView(APIView):
     """
     POST /api/auth/register/  body: { email, full_name, phone_number, password, password_confirm }
 
-    Creates the user (is_verified=False) and emails a 6-digit OTP to confirm
-    ownership of the address. Returns NO JWT — the frontend must complete
-    verification via /api/auth/register/verify/ before the user can sign in.
+    Creates the user, marks them verified, and returns JWT tokens immediately.
+    User management (suspend, manual verification override, etc.) happens in
+    the Django admin panel.
     """
     permission_classes = [permissions.AllowAny]
 
@@ -39,22 +39,14 @@ class RegisterView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         user = serializer.save()
-        # New accounts start unverified; the OTP step flips this to True.
-        user.is_verified = False
+        user.is_verified = True
         user.save(update_fields=['is_verified'])
 
-        # Issue an email-OTP challenge for verification.
-        from .services.otp import issue_challenge, send_otp, mask_email
-        challenge, code = issue_challenge(user)
-        send_otp(user, code)
-
+        tokens = get_tokens_for_user(user)
         return Response({
-            'message':      'Account created. Please enter the 6-digit code we just emailed you.',
-            'requires_otp': True,
-            'purpose':      'register',
-            'challenge_id': str(challenge.id),
-            'masked_email': mask_email(user.email),
-            'email':        user.email,
+            'message': 'Account created successfully.',
+            'user':    UserSerializer(user).data,
+            'tokens':  tokens,
         }, status=status.HTTP_201_CREATED)
 
 
@@ -62,10 +54,7 @@ class LoginView(APIView):
     """
     POST /api/auth/login/  body: { "email": "...", "password": "..." }
 
-    If the user has `two_factor_enabled=False` → returns JWT tokens immediately.
-    If the user has `two_factor_enabled=True`  → issues an OTP challenge and
-    returns `{ requires_otp: true, challenge_id, masked_email }`. The frontend
-    must then POST to `/api/auth/2fa/verify/` to exchange the OTP for tokens.
+    Validates credentials and returns JWT tokens. No OTP / 2FA — pure JWT auth.
     """
     permission_classes = [permissions.AllowAny]
 
@@ -76,22 +65,7 @@ class LoginView(APIView):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_401_UNAUTHORIZED)
 
-        user = serializer.validated_data['user']
-
-        # ── 2FA branch — emails the OTP to the user's registered address ──────
-        if user.two_factor_enabled:
-            from .services.otp import issue_challenge, send_otp, mask_email
-            challenge, code = issue_challenge(user)
-            send_otp(user, code)
-            return Response({
-                'requires_otp': True,
-                'challenge_id': str(challenge.id),
-                'masked_email': mask_email(user.email),
-                'email':        user.email,
-                'message':      'Verification code sent to your email. Please enter it to complete sign-in.',
-            }, status=status.HTTP_200_OK)
-
-        # ── No 2FA — issue tokens straight away ───────────────────────────────
+        user   = serializer.validated_data['user']
         tokens = get_tokens_for_user(user)
         return Response({
             'message': 'Login successful.',
