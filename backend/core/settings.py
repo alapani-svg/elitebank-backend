@@ -87,7 +87,7 @@ CORS_ALLOWED_ORIGINS = list({
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https://.*\.vercel\.app$",
 ]
-CSRF_TRUSTED_ORIGINS = [*_frontend_urls, 'https://elite-bank-cm.vercel.app', 'https://elite-bank-api.onrender.com']
+CSRF_TRUSTED_ORIGINS = [*_frontend_urls, 'https://elitebank-frontend.vercel.app', 'https://elite-bank-api.onrender.com']
 
 ROOT_URLCONF = 'core.urls'
 
@@ -308,7 +308,7 @@ JAZZMIN_SETTINGS = {
         {"name": "Home",     "url": "admin:index",          "permissions": ["auth.view_user"]},
         {"name": "Users",    "url": "admin:accounts_user_changelist"},
         {"name": "Transactions", "url": "admin:transactions_transaction_changelist"},
-        {"name": "View App", "url": "http://localhost:4200", "new_window": True},
+        {"name": "View App", "url": (_frontend_urls[0] if _frontend_urls else "http://localhost:4200"), "new_window": True},
     ],
 
     # Sidebar

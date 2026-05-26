@@ -1,8 +1,3 @@
-# Render Blueprint (must live at repo root for Render to discover it).
-# Auto-provisions a Postgres database + a Django web service from /backend.
-# Connect this repo on render.com → New + → Blueprint → select repo.
-# Reference: https://render.com/docs/blueprint-spec
-
 databases:
   - name: elite-bank-db
     databaseName: elite_bank
@@ -44,6 +39,12 @@ services:
         sync: false                # set manually in dashboard after first Vercel deploy
       - key: NOTCHPAY_PUBLIC_KEY
         sync: false                # leave empty for demo mode, or set sandbox key
+      - key: EMAIL_HOST_USER
+        sync: false                # Gmail address that sends OTP emails
+      - key: EMAIL_HOST_PASSWORD
+        sync: false                # Gmail App Password (16 chars, NO spaces)
+      - key: DEFAULT_FROM_EMAIL
+        sync: false                # e.g. "Elite Bank <corantin2005@gmail.com>"
       - key: SECURE_SSL_REDIRECT
         value: "True"
       - key: SECURE_HSTS_SECONDS
