@@ -63,6 +63,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',          # must be first
     'django.middleware.security.SecurityMiddleware',
+    'django.middleware.gzip.GZipMiddleware',          # compress responses
     'whitenoise.middleware.WhiteNoiseMiddleware',     # serve static in prod
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
