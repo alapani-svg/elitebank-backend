@@ -1,5 +1,7 @@
 from django.contrib import admin
+from django.http import HttpResponseRedirect
 from django.urls import path, include
+from django.views.decorators.cache import never_cache
 
 from drf_spectacular.views import (
     SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView,
@@ -7,7 +9,15 @@ from drf_spectacular.views import (
 
 from .health import health, readiness
 
+
+@never_cache
+def root_redirect(_request):
+    return HttpResponseRedirect('/admin/')
+
+
 urlpatterns = [
+    path('', root_redirect, name='root'),
+
     path('admin/', admin.site.urls),
 
     # Health probes
