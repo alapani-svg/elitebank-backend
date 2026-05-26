@@ -170,12 +170,13 @@ class UserAdmin(BaseUserAdmin):
 
     def balance_formatted(self, obj):
         bal = obj.balance_xaf or 0
+        amount = f'{bal:,.0f}'
         if bal > 0:
             return format_html(
-                '<strong style="color:#28a745;">XAF {:,.0f}</strong>', bal
+                '<strong style="color:#28a745;">XAF {}</strong>', amount
             )
         return format_html(
-            '<span style="color:#dc3545;">XAF {:,.0f}</span>', bal
+            '<span style="color:#dc3545;">XAF {}</span>', amount
         )
     balance_formatted.short_description = 'Balance (XAF)'
     balance_formatted.admin_order_field = 'balance_xaf'
