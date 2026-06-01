@@ -3,18 +3,18 @@ from django.db import connections
 from django.db.utils import OperationalError
 from django.http import JsonResponse
 from django.views.decorators.cache import never_cache
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_http_methods
 
 
 @never_cache
-@require_GET
+@require_http_methods(["GET", "HEAD"])
 def health(_request):
     """Quick liveness probe — returns immediately."""
     return JsonResponse({'status': 'ok', 'service': 'elite-bank-api'})
 
 
 @never_cache
-@require_GET
+@require_http_methods(["GET", "HEAD"])
 def readiness(_request):
     """Readiness probe — verifies the DB connection works."""
     try:
