@@ -27,9 +27,9 @@ class RegisterView(APIView):
     """
     POST /api/auth/register/  body: { email, full_name, phone_number, password, password_confirm }
 
-    Creates the user, marks them verified, and returns JWT tokens immediately.
-    User management (suspend, manual verification override, etc.) happens in
-    the Django admin panel.
+    Creates the user with is_verified=False and emails a 6-digit OTP to prove
+    they own the email address. Returns NO JWT — the frontend must POST the
+    code to /api/auth/register/verify/ to receive tokens.
     """
     permission_classes = [permissions.AllowAny]
 
@@ -39,14 +39,20 @@ class RegisterView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         user = serializer.save()
-        user.is_verified = True
+        user.is_verified = False
         user.save(update_fields=['is_verified'])
 
-        tokens = get_tokens_for_user(user)
+        from .services.otp import issue_challenge, send_otp, mask_email
+        challenge, code = issue_challenge(user)
+        send_otp(user, code)
+
         return Response({
-            'message': 'Account created successfully.',
-            'user':    UserSerializer(user).data,
-            'tokens':  tokens,
+            'message':      'Account created. Please enter the 6-digit code we just emailed you.',
+            'requires_otp': True,
+            'purpose':      'register',
+            'challenge_id': str(challenge.id),
+            'masked_email': mask_email(user.email),
+            'email':        user.email,
         }, status=status.HTTP_201_CREATED)
 
 
@@ -123,8 +129,8 @@ class RegisterVerifyView(APIView):
     POST /api/auth/register/verify/  body: { challenge_id, code }
 
     Confirms the OTP that was emailed during registration. On success the
-    user's `is_verified` flag is set to True and they can log in normally.
-    Returns NO JWT — the frontend should redirect to /login.
+    user's `is_verified` flag is set to True AND JWT tokens are returned so
+    the frontend can log them in immediately (no second login round-trip).
     """
     permission_classes = [permissions.AllowAny]
 
@@ -157,9 +163,11 @@ class RegisterVerifyView(APIView):
         except Exception:
             pass
 
+        tokens = get_tokens_for_user(user)
         return Response({
-            'message': 'Email verified successfully. You can now sign in.',
-            'email':   user.email,
+            'message':  'Email verified successfully.',
+            'user':     UserSerializer(user).data,
+            'tokens':   tokens,
             'verified': True,
         }, status=status.HTTP_200_OK)
 
