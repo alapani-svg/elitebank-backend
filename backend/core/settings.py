@@ -81,6 +81,7 @@ _frontend_urls = [u.strip() for u in _cfg(
 ).split(',') if u.strip()]
 CORS_ALLOWED_ORIGINS = list({
     'http://localhost:4200',
+    'https://elitebank-frontend.vercel.app',
     *_frontend_urls,
 })
 
