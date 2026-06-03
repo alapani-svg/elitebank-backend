@@ -281,13 +281,17 @@ class LogoutView(APIView):
 
 # ── Password reset (forgot password) ──────────────────────────────────────────
 
+_RESET_TOKEN_SALT   = 'elite-bank.password-reset'
+_RESET_TOKEN_MAXAGE = 10 * 60
+
+
 class PasswordResetRequestView(APIView):
     """
     POST /api/auth/password-reset/request/  body: { "email": "..." }
 
-    Always returns 200 — never reveals whether the email exists, to prevent
-    account enumeration. If the email matches an active user, a signed
-    one-hour token is emailed to them.
+    Issues a 6-digit OTPChallenge for the user and emails the code. Returns
+    the challenge_id so the frontend can drive the verify-otp step.
+    Always returns 200 even if the email is unknown (no account enumeration).
     """
     permission_classes = [permissions.AllowAny]
 
@@ -302,54 +306,125 @@ class PasswordResetRequestView(APIView):
         try:
             user = UserModel.objects.get(email__iexact=email, is_active=True)
         except UserModel.DoesNotExist:
-            user = None
+            return Response({
+                'message':      'If an account exists for that email, a 6-digit code has been sent.',
+                'challenge_id': '',
+                'masked_email': '',
+                'email':        email,
+            }, status=status.HTTP_200_OK)
 
-        if user:
-            from .services.password_reset import make_token, send_password_reset_email
-            token = make_token(user)
-            send_password_reset_email(user, token)
+        from .services.otp import issue_challenge, send_otp, mask_email
+        challenge, code = issue_challenge(user)
+        send_otp(user, code)
 
-            # Also drop an in-app notification so it shows in the bell next login.
-            try:
-                from .services.notifications import notify
-                notify(
-                    user, 'SECURITY', 'INFO',
-                    title='Password reset requested',
-                    body='If this was not you, ignore this notification.',
-                )
-            except Exception:
-                pass
+        try:
+            from .services.notifications import notify
+            notify(
+                user, 'SECURITY', 'INFO',
+                title='Password reset requested',
+                body='A 6-digit code was emailed to reset your password. If this was not you, ignore this message.',
+            )
+        except Exception:
+            pass
 
-        return Response(
-            {'detail': 'If an account exists for that email, we just sent a reset link.'},
-            status=status.HTTP_200_OK,
+        return Response({
+            'message':      'A 6-digit code has been sent to your email.',
+            'challenge_id': str(challenge.id),
+            'masked_email': mask_email(user.email),
+            'email':        user.email,
+        }, status=status.HTTP_200_OK)
+
+
+class PasswordResetVerifyOTPView(APIView):
+    """
+    POST /api/auth/password-reset/verify-otp/
+      body: { "challenge_id": "...", "code": "123456" }
+
+    Verifies the OTP and returns a short-lived (10 min) signed reset_token
+    that the frontend hands back to /password-reset/confirm/ together with
+    the new password.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        challenge_id = (request.data.get('challenge_id') or '').strip()
+        code         = (request.data.get('code') or '').strip()
+
+        if not challenge_id or not code:
+            return Response(
+                {'detail': 'challenge_id and code are required.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from .services.otp import verify_challenge
+        challenge, error = verify_challenge(challenge_id, code)
+        if challenge is None:
+            return Response({'detail': error}, status=status.HTTP_400_BAD_REQUEST)
+
+        from django.core import signing
+        reset_token = signing.dumps(
+            {'user_id': str(challenge.user.id), 'purpose': 'password_reset'},
+            salt=_RESET_TOKEN_SALT,
         )
+
+        return Response({
+            'message':     'Code verified. You can now set a new password.',
+            'reset_token': reset_token,
+            'verified':    True,
+        }, status=status.HTTP_200_OK)
 
 
 class PasswordResetConfirmView(APIView):
     """
     POST /api/auth/password-reset/confirm/
-      body: { "token": "...", "new_password": "...", "confirm_password": "..." }
+      body: { "reset_token": "...", "new_password": "...", "confirm_password": "..." }
 
-    Verifies the signed token (≤ 1 hour old), sets the new password, and
-    drops an in-app notification + email confirmation.
+    Validates the signed reset_token (max age 10 minutes), enforces the
+    password policy, and writes the new password.
     """
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        serializer = PasswordResetConfirmSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        reset_token      = request.data.get('reset_token') or request.data.get('token') or ''
+        new_password     = request.data.get('new_password') or ''
+        confirm_password = request.data.get('confirm_password') or ''
 
-        from .services.password_reset import consume_token
-        user = consume_token(serializer.validated_data['token'])
-        if user is None:
-            return Response(
-                {'detail': 'This reset link is invalid or has expired. Please request a new one.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        if not reset_token:
+            return Response({'detail': 'reset_token is required.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if new_password != confirm_password:
+            return Response({'confirm_password': ['Passwords do not match.']},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if len(new_password) < 8:
+            return Response({'new_password': ['Password must be at least 8 characters.']},
+                            status=status.HTTP_400_BAD_REQUEST)
+        import re
+        if not (re.search(r'[a-zA-Z]', new_password) and re.search(r'\d', new_password)):
+            return Response({'new_password': ['Password must contain both letters and digits.']},
+                            status=status.HTTP_400_BAD_REQUEST)
 
-        user.set_password(serializer.validated_data['new_password'])
+        from django.core import signing
+        try:
+            payload = signing.loads(reset_token, salt=_RESET_TOKEN_SALT, max_age=_RESET_TOKEN_MAXAGE)
+        except signing.SignatureExpired:
+            return Response({'detail': 'This reset link has expired. Please restart the flow.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        except signing.BadSignature:
+            return Response({'detail': 'Invalid reset token. Please restart the flow.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        if payload.get('purpose') != 'password_reset':
+            return Response({'detail': 'Invalid reset token.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        from accounts.models import User as UserModel
+        try:
+            user = UserModel.objects.get(pk=payload['user_id'], is_active=True)
+        except UserModel.DoesNotExist:
+            return Response({'detail': 'Account no longer exists or has been deactivated.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(new_password)
         from django.utils import timezone
         user.password_changed_at = timezone.now()
         user.save(update_fields=['password', 'password_changed_at'])
