@@ -104,8 +104,16 @@ class RegisterSerializer(serializers.ModelSerializer):
         model  = User
         fields = ['full_name', 'email', 'phone_number', 'password', 'password_confirm']
 
+    def validate_full_name(self, value):
+        cleaned = ' '.join(value.split())
+        if len(cleaned) < 3:
+            raise serializers.ValidationError("Full name must be at least 3 characters.")
+        if User.objects.filter(full_name__iexact=cleaned).exists():
+            raise serializers.ValidationError("A user with this name already exists.")
+        return cleaned
+
     def validate_email(self, value):
-        if User.objects.filter(email=value).exists():
+        if User.objects.filter(email__iexact=value).exists():
             raise serializers.ValidationError("A user with this email already exists.")
         return value.lower()
 
