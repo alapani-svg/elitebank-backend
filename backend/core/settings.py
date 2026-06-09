@@ -230,13 +230,19 @@ CLOUDINARY_API_SECRET = _cfg("CLOUDINARY_API_SECRET", default="")
 
 EXCHANGE_API_KEY = _cfg("EXCHANGE_API_KEY", default="")
 
-# ── Email 
-_email_user = _cfg("EMAIL_HOST_USER", default="")
-EMAIL_BACKEND     = (
-    "django.core.mail.backends.smtp.EmailBackend"
-    if _email_user else
-    "django.core.mail.backends.console.EmailBackend"
-)
+# ── Email
+# Backend selection order:
+#   1. BREVO_API_KEY  -> Brevo REST API (preferred for production)
+#   2. EMAIL_HOST_USER -> Gmail / generic SMTP
+#   3. otherwise      -> console (dev / logs only)
+BREVO_API_KEY = _cfg("BREVO_API_KEY", default="")
+_email_user   = _cfg("EMAIL_HOST_USER", default="")
+if BREVO_API_KEY:
+    EMAIL_BACKEND = "accounts.email_backends.BrevoEmailBackend"
+elif _email_user:
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 EMAIL_HOST          = _cfg("EMAIL_HOST",          default="smtp.gmail.com")
 EMAIL_PORT          = _cfg("EMAIL_PORT",          default=587, cast=int)
 EMAIL_USE_TLS       = _cfg("EMAIL_USE_TLS",       default="True", cast=bool)
